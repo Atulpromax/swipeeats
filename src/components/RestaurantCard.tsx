@@ -25,7 +25,7 @@ export function RestaurantCard({
     const [imageError, setImageError] = useState(false);
     const [isScrolling, setIsScrolling] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
-    const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+    const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
     const imageUrl = restaurant.image_urls?.[0] || '/placeholder-restaurant.jpg';
     const distance = formatDistance(restaurant.distance || 0);
