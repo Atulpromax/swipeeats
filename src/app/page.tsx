@@ -149,7 +149,7 @@ export default function HomePage() {
       />
 
       {/* Swipe Deck */}
-      <div className="fixed inset-0 pt-14 pb-24">
+      <div className="fixed inset-0 pb-24">
         <SwipeDeck
           restaurants={activeDeck}
           currentIndex={currentIndex}
