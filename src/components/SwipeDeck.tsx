@@ -193,6 +193,7 @@ export function SwipeDeck({
                 <div className="absolute inset-6 opacity-50 scale-[0.96]">
                     <div className="w-full h-full rounded-3xl overflow-hidden bg-zinc-900">
                         <RestaurantCard
+                            key={`next-${nextRestaurant.name}-${currentIndex + 1}`}
                             restaurant={nextRestaurant}
                             userLat={userLat}
                             userLon={userLon}
@@ -205,6 +206,7 @@ export function SwipeDeck({
 
             {/* Current card */}
             <motion.div
+                key={`current-${currentRestaurant.name}-${currentIndex}`}
                 className="absolute inset-6"
                 style={{ x, rotate }}
                 onTouchStart={handleTouchStart}

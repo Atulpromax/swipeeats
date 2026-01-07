@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Restaurant } from '@/types';
 import { useRestaurants } from '@/hooks/useRestaurants';
@@ -30,22 +30,46 @@ export default function HomePage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
 
-  // Get scored and filtered restaurants
+  // CRITICAL FIX: Lock the restaurant deck at the start of each sprint
+  // This prevents re-ranking during swipes which causes the "next card" to change mid-swipe
+  const sprintDeckRef = useRef<Restaurant[]>([]);
+  const sprintStartedRef = useRef(false);
+
+  // Get scored and filtered restaurants (for initial ranking only)
   const scoredRestaurants = useMemo(() => {
     if (restaurants.length === 0) return [];
     return getScoredRestaurants(restaurants, allSwipedIds);
   }, [restaurants, getScoredRestaurants, allSwipedIds]);
 
+  // Lock the sprint deck when starting a new sprint or when restaurants first load
+  useEffect(() => {
+    // Only update the deck if:
+    // 1. Sprint just completed (isComplete is true) - wait for reset
+    // 2. We have restaurants but deck is empty - initial load
+    // 3. Sprint was reset (currentIndex === 0 and swipe count === 0)
+    const shouldUpdateDeck =
+      (!isComplete && sprintSwipeCount === 0 && (sprintDeckRef.current.length === 0 || currentIndex === 0)) ||
+      (scoredRestaurants.length > 0 && sprintDeckRef.current.length === 0);
+
+    if (shouldUpdateDeck) {
+      sprintDeckRef.current = [...scoredRestaurants];
+      sprintStartedRef.current = true;
+    }
+  }, [scoredRestaurants, isComplete, sprintSwipeCount, currentIndex]);
+
+  // Use the locked sprint deck instead of live-updating scoredRestaurants
+  const activeDeck = sprintDeckRef.current;
+
   // Handle swipe action
   const handleSwipe = useCallback((direction: 'left' | 'right') => {
-    const restaurant = scoredRestaurants[currentIndex];
+    const restaurant = activeDeck[currentIndex];
     if (!restaurant) return;
 
     const liked = direction === 'right';
     recordPreference(restaurant, liked);
     recordSprintSwipe(restaurant, liked);
     setCurrentIndex(prev => prev + 1);
-  }, [scoredRestaurants, currentIndex, recordPreference, recordSprintSwipe]);
+  }, [activeDeck, currentIndex, recordPreference, recordSprintSwipe]);
 
   // Handle retry (new sprint, keep preferences)
   const handleRetry = useCallback(() => {
@@ -97,7 +121,7 @@ export default function HomePage() {
   }
 
   // No restaurants left
-  if (scoredRestaurants.length === 0 && !isComplete) {
+  if (activeDeck.length === 0 && !isComplete) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
         <div className="text-center max-w-sm">
@@ -127,7 +151,7 @@ export default function HomePage() {
       {/* Swipe Deck */}
       <div className="fixed inset-0 pt-14 pb-24">
         <SwipeDeck
-          restaurants={scoredRestaurants}
+          restaurants={activeDeck}
           currentIndex={currentIndex}
           onSwipe={handleSwipe}
           userLat={userLocation.latitude}
