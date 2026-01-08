@@ -32,9 +32,18 @@ export default function HomePage() {
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
   const [sprintKey, setSprintKey] = useState(0);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [minLoadingComplete, setMinLoadingComplete] = useState(false);
 
   // Use STATE for deck so changes trigger re-render immediately
   const [sprintDeck, setSprintDeck] = useState<Restaurant[]>([]);
+
+  // Minimum loading time of 1.5 seconds for premium app feel
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMinLoadingComplete(true);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Mark when restaurants first load
   useEffect(() => {
@@ -94,7 +103,8 @@ export default function HomePage() {
   }, []);
 
   // LOADING STATE - Premium branded loading screen
-  if (loading) {
+  // Show until both: 1) data is loaded AND 2) minimum 1.5s has passed
+  if (loading || !minLoadingComplete) {
     return <LoadingScreen />;
   }
 
