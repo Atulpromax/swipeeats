@@ -54,7 +54,7 @@ export const RestaurantCard = memo(function RestaurantCard({
     const visibleTags = ambianceTags.slice(0, 3);
     const remainingCount = Math.max(0, ambianceTags.length - 3);
 
-    // Filter REAL photos only (no placeholders, no brand images)
+    // Filter REAL photos only (no placeholders, no brand images, no o2_assets)
     const galleryPhotos = (restaurant.image_urls || [])
         .slice(1, 6)
         .filter(url =>
@@ -62,7 +62,8 @@ export const RestaurantCard = memo(function RestaurantCard({
             !url.includes('placeholder') &&
             !url.toLowerCase().includes('zomato') &&
             !url.toLowerCase().includes('brand') &&
-            !url.toLowerCase().includes('logo')
+            !url.toLowerCase().includes('logo') &&
+            !url.includes('o2_assets')
         );
 
     // Format price nicely
