@@ -30,6 +30,7 @@ export default function HomePage() {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
+  const [sprintKey, setSprintKey] = useState(0); // Force SwipeDeck re-render on retry
 
   // FIX: Track if we've ever loaded restaurants (to prevent showing empty state on first load)
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
@@ -81,6 +82,7 @@ export default function HomePage() {
   const handleRetry = useCallback(() => {
     resetSprint();
     setCurrentIndex(0);
+    setSprintKey(prev => prev + 1); // Force complete re-render of SwipeDeck
     // Immediately rebuild deck from scored restaurants
     sprintDeckRef.current = [...scoredRestaurants];
   }, [resetSprint, scoredRestaurants]);
@@ -177,6 +179,7 @@ export default function HomePage() {
       {/* Swipe Deck */}
       <div className="fixed inset-0 pb-24">
         <SwipeDeck
+          key={sprintKey}  // Force complete re-mount on retry
           restaurants={activeDeck}
           currentIndex={currentIndex}
           onSwipe={handleSwipe}

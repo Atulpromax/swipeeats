@@ -97,19 +97,18 @@ export const SwipeDeck = memo(function SwipeDeck({
         if (isAnimatingOut) return;
         setIsAnimatingOut(true);
 
-        const targetX = direction === 'right' ? 500 : -500;
+        // Call onSwipe IMMEDIATELY for instant feedback
+        onSwipe(direction);
+
+        const targetX = direction === 'right' ? 400 : -400;
 
         animate(x, targetX, {
             type: 'spring',
-            stiffness: 400,
-            damping: 35,
+            stiffness: 800,  // Much faster
+            damping: 40,
             onComplete: () => {
-                // Defer state update to after animation
-                requestAnimationFrame(() => {
-                    onSwipe(direction);
-                    x.set(0);
-                    setIsAnimatingOut(false);
-                });
+                x.set(0);
+                setIsAnimatingOut(false);
             },
         });
     }, [x, onSwipe, isAnimatingOut]);
@@ -241,16 +240,10 @@ export const SwipeDeck = memo(function SwipeDeck({
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseLeave}
         >
-            {/* Background card hint (just a placeholder, no content) */}
-            {restaurants[currentIndex + 2] && (
-                <div className="absolute inset-4 opacity-25 scale-[0.92] z-0">
-                    <div className="w-full h-full rounded-3xl bg-zinc-800" />
-                </div>
-            )}
 
-            {/* Next card (only render one background card for performance) */}
+            {/* Next card - full opacity, ready immediately */}
             {nextRestaurant && (
-                <div className="absolute inset-4 opacity-60 scale-[0.96] z-10">
+                <div className="absolute inset-4 scale-[0.97] z-10">
                     <BackgroundCard
                         restaurant={nextRestaurant}
                         userLat={userLat}
