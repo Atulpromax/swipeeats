@@ -188,10 +188,17 @@ export function SwipeDeck({
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseLeave}
         >
-            {/* Background card */}
+            {/* Background card - Third in stack */}
+            {restaurants[currentIndex + 2] && (
+                <div className="absolute inset-4 opacity-30 scale-[0.92] z-0">
+                    <div className="w-full h-full rounded-3xl overflow-hidden bg-zinc-900 shadow-xl" />
+                </div>
+            )}
+
+            {/* Background card - Second in stack */}
             {nextRestaurant && (
-                <div className="absolute inset-6 opacity-50 scale-[0.96]">
-                    <div className="w-full h-full rounded-3xl overflow-hidden bg-zinc-900">
+                <div className="absolute inset-4 opacity-60 scale-[0.96] z-10">
+                    <div className="w-full h-full rounded-3xl overflow-hidden bg-zinc-900 shadow-2xl">
                         <RestaurantCard
                             key={`next-${nextRestaurant.name}-${currentIndex + 1}`}
                             restaurant={nextRestaurant}
@@ -204,10 +211,10 @@ export function SwipeDeck({
                 </div>
             )}
 
-            {/* Current card */}
+            {/* Current card - Top of stack */}
             <motion.div
                 key={`current-${currentRestaurant.name}-${currentIndex}`}
-                className="absolute inset-6"
+                className="absolute inset-4 z-20"
                 style={{ x, rotate }}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
