@@ -80,12 +80,16 @@ export default function HomePage() {
 
   // Handle retry (new sprint)
   const handleRetry = useCallback(() => {
+    // 1. Reset sprint state (this clears allSwipedIds)
     resetSprint();
+    // 2. Reset current index
     setCurrentIndex(0);
-    setSprintKey(prev => prev + 1); // Force complete re-render of SwipeDeck
-    // Immediately rebuild deck from scored restaurants
-    sprintDeckRef.current = [...scoredRestaurants];
-  }, [resetSprint, scoredRestaurants]);
+    // 3. Force SwipeDeck to unmount/remount
+    setSprintKey(prev => prev + 1);
+    // 4. IMPORTANT: Clear the deck so useEffect rebuilds it with fresh scoredRestaurants
+    //    Don't use scoredRestaurants here as it's a stale closure!
+    sprintDeckRef.current = [];
+  }, [resetSprint]);
 
   // Handle full reset
   const handleResetTaste = useCallback(() => {
