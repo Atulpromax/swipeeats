@@ -12,7 +12,8 @@ interface SwipeDeckProps {
     userLat: number;
     userLon: number;
     isDefaultLocation: boolean;
-    isLastSprintCard?: boolean; // Hide background card on last card
+    sprintSize?: number;
+    sprintSwipeCount?: number;
 }
 
 const SWIPE_THRESHOLD = 80;
@@ -54,10 +55,15 @@ export const SwipeDeck = memo(function SwipeDeck({
     userLat,
     userLon,
     isDefaultLocation,
-    isLastSprintCard = false,
+    sprintSize = 20,
+    sprintSwipeCount = 0,
 }: SwipeDeckProps) {
     const [isAnimatingOut, setIsAnimatingOut] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
+
+    // Determine if we should hide the background card
+    // Hide on last card (swipeCount === sprintSize - 1) OR if sprint is complete (swipeCount >= sprintSize)
+    const shouldHideBackgroundCard = sprintSwipeCount >= sprintSize - 1;
 
     const x = useMotionValue(0);
     const rotate = useTransform(x, [-300, 300], [-12, 12]);
@@ -251,6 +257,11 @@ export const SwipeDeck = memo(function SwipeDeck({
         }
     }, [isDragging, handleTouchEnd]);
 
+    // If sprint is complete (swipeCount >= sprintSize), don't render anything - results screen will show
+    if (sprintSwipeCount >= sprintSize) {
+        return <div className="w-full h-full bg-zinc-950" />;
+    }
+
     if (!currentRestaurant) {
         return (
             <div className="flex flex-col items-center justify-center h-full gap-4">
@@ -270,7 +281,7 @@ export const SwipeDeck = memo(function SwipeDeck({
         >
 
             {/* Next card - hide on last sprint card to avoid showing 21st card */}
-            {nextRestaurant && !isLastSprintCard && (
+            {nextRestaurant && !shouldHideBackgroundCard && (
                 <div className="absolute inset-4 scale-[0.97] z-10">
                     <BackgroundCard
                         restaurant={nextRestaurant}
