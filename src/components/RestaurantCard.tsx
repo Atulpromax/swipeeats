@@ -36,10 +36,13 @@ export const RestaurantCard = memo(function RestaurantCard({
     const visibleTags = ambianceTags.slice(0, 4);
     const remainingCount = Math.max(0, ambianceTags.length - 4);
 
-    // Filter real photos (no placeholders)
+    // Filter real photos (no placeholders or brand images)
     const galleryPhotos = (restaurant.image_urls || [])
-        .slice(1, 7)
-        .filter(url => url && !url.includes('placeholder'));
+        .slice(1, 8)
+        .filter(url => url &&
+            !url.includes('placeholder') &&
+            !url.toLowerCase().includes('zomato') &&
+            !url.toLowerCase().includes('brand'));
 
     // Scroll detection for gesture isolation
     const handleScroll = useCallback(() => {
