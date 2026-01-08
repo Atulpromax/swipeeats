@@ -3,7 +3,26 @@
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { Restaurant } from '@/types';
-import { formatDistance, getDirectionsUrl } from '@/utils/location';
+import { formatDistance } from '@/utils/location';
+
+// Design tokens for consistency
+const SPACING = {
+    xs: 4,
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 20,
+    xxl: 24,
+    xxxl: 32,
+};
+
+const RADIUS = {
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 20,
+    xxl: 24,
+};
 
 interface WinnerHeroProps {
     restaurant: Restaurant;
@@ -15,15 +34,22 @@ export function WinnerHero({ restaurant, userLat, userLon }: WinnerHeroProps) {
     const heroImage = restaurant.image_urls?.[0] || '/placeholder-restaurant.jpg';
     const distance = formatDistance(restaurant.distance || 0);
 
+    // Format price nicely
+    const formatPrice = (price: number) => {
+        if (price >= 1000) return `₹${(price / 1000).toFixed(1)}k`;
+        return `₹${price}`;
+    };
+
     return (
         <motion.div
-            className="relative overflow-hidden rounded-2xl"
+            className="relative overflow-hidden"
+            style={{ borderRadius: RADIUS.xxl }}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4, ease: 'easeOut' }}
         >
             {/* Hero Image */}
-            <div className="relative aspect-[4/3] w-full">
+            <div className="relative w-full" style={{ aspectRatio: '4/3' }}>
                 <Image
                     src={heroImage}
                     alt={restaurant.name}
@@ -33,55 +59,84 @@ export function WinnerHero({ restaurant, userLat, userLon }: WinnerHeroProps) {
                     priority
                 />
 
-                {/* Gradient Overlay */}
+                {/* Gradient Overlay - Stronger */}
                 <div
-                    className="absolute inset-0"
+                    className="absolute inset-0 pointer-events-none"
                     style={{
-                        background: 'linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.7) 70%, rgba(0,0,0,0.9) 100%)'
+                        background: `
+                            linear-gradient(180deg, 
+                                rgba(0,0,0,0.35) 0%, 
+                                rgba(0,0,0,0) 30%,
+                                rgba(0,0,0,0) 40%,
+                                rgba(0,0,0,0.6) 65%,
+                                rgba(0,0,0,0.95) 100%
+                            )
+                        `
                     }}
                 />
 
-                {/* Winner Badge */}
-                <div className="absolute top-4 left-4">
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/90 backdrop-blur-sm">
+                {/* Winner Badge - Top Left */}
+                <div
+                    className="absolute z-10"
+                    style={{ top: SPACING.lg, left: SPACING.lg }}
+                >
+                    <div
+                        className="flex items-center gap-2 bg-amber-500 backdrop-blur-sm"
+                        style={{
+                            padding: `${SPACING.sm}px ${SPACING.md}px`,
+                            borderRadius: RADIUS.md,
+                        }}
+                    >
                         <span className="text-sm">🏆</span>
-                        <span className="text-xs font-semibold text-black uppercase tracking-wide">Winner</span>
+                        <span className="text-xs font-bold text-black uppercase tracking-wider">Winner</span>
                     </div>
                 </div>
 
-                {/* Content Overlay */}
-                <div className="absolute bottom-0 left-0 right-0 p-5">
+                {/* Content Overlay at Bottom */}
+                <div
+                    className="absolute bottom-0 left-0 right-0 z-10"
+                    style={{ padding: SPACING.xl }}
+                >
                     {/* Restaurant Name */}
-                    <h2 className="text-2xl font-bold text-white mb-2 leading-tight">
+                    <h2
+                        className="text-white text-2xl font-bold leading-tight"
+                        style={{
+                            marginBottom: SPACING.md,
+                            textShadow: '0 2px 12px rgba(0,0,0,0.6)'
+                        }}
+                    >
                         {restaurant.name}
                     </h2>
 
-                    {/* Metadata Row */}
-                    <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-sm text-white/80">
-                        {/* Rating */}
+                    {/* Meta Row 1: Rating + Cuisine + Price */}
+                    <div
+                        className="flex items-center flex-wrap gap-x-2 text-white/90"
+                        style={{ marginBottom: SPACING.xs }}
+                    >
+                        {/* Rating Badge */}
                         <span className="flex items-center gap-1">
-                            <span className="text-amber-400">★</span>
-                            <span className="font-medium text-white">{restaurant.rating}</span>
+                            <span className="text-amber-400 text-sm">★</span>
+                            <span className="text-sm font-semibold">{restaurant.rating?.toFixed(1)}</span>
                         </span>
 
-                        <span className="text-white/40">•</span>
+                        <span className="text-white/40 text-sm">•</span>
 
                         {/* Cuisine */}
-                        <span>{restaurant.cuisine || 'Multi-cuisine'}</span>
+                        <span className="text-sm">{restaurant.cuisine || 'Multi-cuisine'}</span>
 
-                        <span className="text-white/40">•</span>
+                        <span className="text-white/40 text-sm">•</span>
 
                         {/* Price */}
-                        <span>₹{restaurant.price_for_two} for two</span>
+                        <span className="text-sm">{formatPrice(restaurant.price_for_two)} for two</span>
 
-                        <span className="text-white/40">•</span>
+                        <span className="text-white/40 text-sm">•</span>
 
                         {/* Distance */}
-                        <span>{distance}</span>
+                        <span className="text-sm">{distance}</span>
                     </div>
 
-                    {/* Area */}
-                    <p className="text-sm text-white/60 mt-1">{restaurant.area}</p>
+                    {/* Meta Row 2: Area */}
+                    <p className="text-sm text-white/70">{restaurant.area}</p>
                 </div>
             </div>
         </motion.div>

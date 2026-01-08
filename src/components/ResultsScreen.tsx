@@ -4,6 +4,15 @@ import { motion } from 'framer-motion';
 import { Restaurant } from '@/types';
 import { WinnerHero, ActionButtons, MatchesList } from './results';
 
+// Design tokens
+const SPACING = {
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 20,
+    xxl: 24,
+};
+
 interface ResultsScreenProps {
     bestMatch: Restaurant | null;
     likedRestaurants: Restaurant[];
@@ -37,21 +46,27 @@ export function ResultsScreen({
             <div
                 className="h-full overflow-y-auto overscroll-contain"
                 style={{
-                    paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 16px))',
+                    paddingBottom: 'calc(88px + env(safe-area-inset-bottom, 16px))',
                     WebkitOverflowScrolling: 'touch'
                 }}
             >
                 {/* Header */}
                 <motion.header
-                    className="sticky top-0 z-20 flex items-center justify-between px-4 py-3 bg-zinc-950/95 backdrop-blur-sm"
-                    style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}
+                    className="sticky top-0 z-20 flex items-center justify-between bg-zinc-950/95 backdrop-blur-sm"
+                    style={{
+                        paddingTop: 'max(12px, env(safe-area-inset-top))',
+                        paddingBottom: SPACING.md,
+                        paddingLeft: SPACING.lg,
+                        paddingRight: SPACING.lg,
+                    }}
                     initial={{ opacity: 0, y: -16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
                 >
                     <button
                         onClick={onRetry}
-                        className="flex items-center justify-center w-11 h-11 -ml-2"
+                        className="flex items-center justify-center"
+                        style={{ width: 44, height: 44, marginLeft: -8 }}
                         aria-label="Go back"
                     >
                         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -64,14 +79,15 @@ export function ResultsScreen({
                     {/* Reset as subtle text button */}
                     <button
                         onClick={onResetTaste}
-                        className="flex items-center justify-center h-11 px-2 text-sm text-zinc-400 hover:text-white transition-colors"
+                        className="flex items-center justify-center text-sm text-zinc-400 hover:text-white transition-colors"
+                        style={{ height: 44, paddingLeft: 8, paddingRight: 8 }}
                     >
                         Reset
                     </button>
                 </motion.header>
 
                 {/* Main Content */}
-                <div className="px-4 pt-2 pb-4">
+                <div style={{ padding: SPACING.xl }}>
                     {/* Winner Section */}
                     {bestMatch ? (
                         <>
@@ -88,7 +104,8 @@ export function ResultsScreen({
                         </>
                     ) : (
                         <motion.div
-                            className="flex flex-col items-center justify-center py-16 text-center"
+                            className="flex flex-col items-center justify-center text-center"
+                            style={{ paddingTop: 64, paddingBottom: 64 }}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                         >
@@ -108,9 +125,12 @@ export function ResultsScreen({
 
             {/* Fixed Bottom CTA */}
             <motion.div
-                className="fixed left-0 right-0 bottom-0 z-30 px-4 pt-3 bg-gradient-to-t from-zinc-950 via-zinc-950 to-transparent"
+                className="fixed left-0 right-0 bottom-0 z-30 bg-gradient-to-t from-zinc-950 via-zinc-950 to-transparent"
                 style={{
-                    paddingBottom: 'max(16px, env(safe-area-inset-bottom))'
+                    paddingTop: SPACING.xl,
+                    paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+                    paddingLeft: SPACING.xl,
+                    paddingRight: SPACING.xl,
                 }}
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -118,8 +138,12 @@ export function ResultsScreen({
             >
                 <button
                     onClick={onRetry}
-                    className="w-full py-4 rounded-xl bg-white text-zinc-900 font-semibold text-base active:scale-[0.98] transition-transform"
-                    style={{ minHeight: '52px' }}
+                    className="w-full bg-white text-zinc-900 font-semibold text-base active:scale-[0.98] transition-transform"
+                    style={{
+                        padding: `${SPACING.lg}px ${SPACING.xl}px`,
+                        borderRadius: 16,
+                        minHeight: 56,
+                    }}
                 >
                     Start New Sprint
                 </button>
