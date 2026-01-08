@@ -25,19 +25,67 @@ export interface UserLocation {
   isDefault: boolean;
 }
 
-export interface UserPreferences {
-  likeVector: FeatureVector;
-  dislikeVector: FeatureVector;
-  swipeCount: number;
-  lastUpdated: number;
+// ============================================
+// NEW ML RECOMMENDATION SYSTEM TYPES
+// ============================================
+
+export interface SwipeContext {
+  timeOfDay: 'morning' | 'lunch' | 'evening' | 'night';
+  dayOfWeek: number;  // 0-6 (Sunday-Saturday)
+  sprintNumber: number;
+  swipeIndexInSprint: number;  // 0-19
 }
 
-export interface FeatureVector {
-  textFeatures: Record<string, number>; // Token frequencies
-  rating: number;
-  priceNormalized: number;
-  distanceNormalized: number;
+export interface SwipeRecord {
+  restaurantId: string;
+  liked: boolean;
+  timestamp: number;
+  features: number[];  // 22-dim feature snapshot
+  context: SwipeContext;
 }
+
+export interface TimePreference {
+  likes: number;
+  dislikes: number;
+}
+
+export interface UserModel {
+  version: number;  // For migrations
+
+  // Preference vectors (22-dim arrays)
+  likeWeights: number[];
+  dislikeWeights: number[];
+  featureUncertainty: number[];
+  featureConfidence: number[];
+
+  // Statistics
+  totalLikes: number;
+  totalDislikes: number;
+  sprintCount: number;
+  lastSwipeTimestamp: number;
+
+  // Context preferences
+  timePreferences: {
+    morning: TimePreference;
+    lunch: TimePreference;
+    evening: TimePreference;
+    night: TimePreference;
+  };
+
+  // History (last 50 swipes only)
+  swipeHistory: SwipeRecord[];
+}
+
+export interface ScoredRestaurant extends Restaurant {
+  score: number;
+  exploitationScore: number;
+  explorationBonus: number;
+  contextMultiplier: number;
+}
+
+// ============================================
+// SPRINT STATE (unchanged)
+// ============================================
 
 export interface SprintState {
   swipeCount: number;

@@ -1,49 +1,52 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Restaurant, UserPreferences } from '@/types';
+import { Restaurant, UserModel } from '@/types';
 import {
     loadPreferences,
     savePreferences,
     resetPreferences,
     updatePreferences,
     scoreRestaurants,
-} from '@/utils/personalization';
+    getCurrentContext,
+} from '@/utils/recommendation';
 
 export function usePersonalization() {
-    const [preferences, setPreferences] = useState<UserPreferences>(() => loadPreferences());
+    const [model, setModel] = useState<UserModel>(() => loadPreferences());
 
-    // Load preferences on mount (client-side only)
+    // Load model on mount (client-side only)
     useEffect(() => {
-        setPreferences(loadPreferences());
+        setModel(loadPreferences());
     }, []);
 
-    // Save preferences when they change
+    // Save model when it changes
     useEffect(() => {
-        savePreferences(preferences);
-    }, [preferences]);
+        savePreferences(model);
+    }, [model]);
 
     const handleSwipe = useCallback((restaurant: Restaurant, liked: boolean) => {
-        setPreferences(prev => updatePreferences(prev, restaurant, liked));
+        setModel(prev => updatePreferences(prev, restaurant, liked));
     }, []);
 
     const getScoredRestaurants = useCallback(
         (restaurants: Restaurant[], excludeIds: Set<string> = new Set()) => {
-            return scoreRestaurants(restaurants, preferences, excludeIds);
+            // Get current context for scoring
+            const context = getCurrentContext(model.sprintCount, model.totalLikes + model.totalDislikes);
+            return scoreRestaurants(restaurants, model, excludeIds, context);
         },
-        [preferences]
+        [model]
     );
 
     const reset = useCallback(() => {
         resetPreferences();
-        setPreferences(loadPreferences());
+        setModel(loadPreferences());
     }, []);
 
     return {
-        preferences,
+        preferences: model, // Keep old name for compatibility
         handleSwipe,
         getScoredRestaurants,
         resetPreferences: reset,
-        swipeCount: preferences.swipeCount,
+        swipeCount: model.totalLikes + model.totalDislikes,
     };
 }
