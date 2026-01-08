@@ -44,11 +44,21 @@ export function RestaurantDetail({
     const distance = formatDistance(restaurant.distance || 0);
     const directionsUrl = getDirectionsUrl(userLat, userLon, restaurant.latitude, restaurant.longitude, restaurant.name);
 
-    // Get first cuisine only
-    const getFirstCuisine = (cuisineStr: string | undefined) => {
-        if (!cuisineStr) return 'Restaurant';
-        const first = cuisineStr.split(',')[0].trim();
-        return first || 'Restaurant';
+    // Parse ambiance tags (move before getDisplayCategory so it can use ambianceTags)
+    const ambianceTags = restaurant.ambiance_tags || [];
+    const visibleTags = ambianceTags.slice(0, 4);
+    const remainingCount = Math.max(0, ambianceTags.length - 4);
+
+    // Get display category - cuisine first, then ambiance tag
+    const getDisplayCategory = () => {
+        if (restaurant.cuisine) {
+            const first = restaurant.cuisine.split(',')[0].trim();
+            if (first) return first;
+        }
+        if (ambianceTags.length > 0) {
+            return ambianceTags[0];
+        }
+        return 'Dining';
     };
 
     // Format price nicely
@@ -56,11 +66,6 @@ export function RestaurantDetail({
         if (price >= 1000) return `₹${(price / 1000).toFixed(1)}k`;
         return `₹${price}`;
     };
-
-    // Parse ambiance tags
-    const ambianceTags = restaurant.ambiance_tags || [];
-    const visibleTags = ambianceTags.slice(0, 4);
-    const remainingCount = Math.max(0, ambianceTags.length - 4);
 
     // Filter REAL photos only 
     const galleryPhotos = (restaurant.image_urls || [])
@@ -170,7 +175,7 @@ export function RestaurantDetail({
 
                         {/* Meta Line 1: Cuisine & Price */}
                         <p className="text-white/90 text-base font-medium" style={{ marginBottom: SPACING.xs }}>
-                            {getFirstCuisine(restaurant.cuisine)}
+                            {getDisplayCategory()}
                             <span className="mx-2 text-white/50">•</span>
                             {formatPrice(restaurant.price_for_two)} for two
                             <span className="mx-2 text-white/50">•</span>

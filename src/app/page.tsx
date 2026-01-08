@@ -174,6 +174,7 @@ export default function HomePage() {
           userLat={userLocation.latitude}
           userLon={userLocation.longitude}
           isDefaultLocation={userLocation.isDefault}
+          isLastSprintCard={sprintSwipeCount === sprintSize - 1}
         />
       </div>
 

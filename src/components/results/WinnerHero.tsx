@@ -40,11 +40,16 @@ export function WinnerHero({ restaurant, userLat, userLon }: WinnerHeroProps) {
         return `₹${price}`;
     };
 
-    // Get first cuisine only
-    const getFirstCuisine = (cuisineStr: string | undefined) => {
-        if (!cuisineStr) return 'Restaurant';
-        const first = cuisineStr.split(',')[0].trim();
-        return first || 'Restaurant';
+    // Get display category - cuisine first, then ambiance tag
+    const getDisplayCategory = () => {
+        if (restaurant.cuisine) {
+            const first = restaurant.cuisine.split(',')[0].trim();
+            if (first) return first;
+        }
+        if (restaurant.ambiance_tags?.length > 0) {
+            return restaurant.ambiance_tags[0];
+        }
+        return 'Dining';
     };
 
     return (
@@ -132,7 +137,7 @@ export function WinnerHero({ restaurant, userLat, userLon }: WinnerHeroProps) {
                         <span className="text-white/40 text-sm">•</span>
 
                         {/* Cuisine */}
-                        <span className="text-sm">{getFirstCuisine(restaurant.cuisine)}</span>
+                        <span className="text-sm">{getDisplayCategory()}</span>
 
                         <span className="text-white/40 text-sm">•</span>
 

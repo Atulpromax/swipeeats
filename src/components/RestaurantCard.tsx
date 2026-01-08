@@ -73,10 +73,18 @@ export const RestaurantCard = memo(function RestaurantCard({
     };
 
     // Get first cuisine only (cuisines may be comma-separated)
-    const getFirstCuisine = (cuisineStr: string | undefined) => {
-        if (!cuisineStr) return 'Restaurant';
-        const first = cuisineStr.split(',')[0].trim();
-        return first || 'Restaurant';
+    // Fallback to first ambiance tag if no cuisine
+    const getDisplayCategory = () => {
+        // Try cuisine first
+        if (restaurant.cuisine) {
+            const first = restaurant.cuisine.split(',')[0].trim();
+            if (first) return first;
+        }
+        // Fallback to first ambiance tag
+        if (ambianceTags.length > 0) {
+            return ambianceTags[0];
+        }
+        return 'Dining';
     };
 
     // Scroll detection - notify parent when scrolling
@@ -197,7 +205,7 @@ export const RestaurantCard = memo(function RestaurantCard({
 
                         {/* Meta Line 1: Cuisine & Price */}
                         <p className="text-white/90 text-base font-medium" style={{ marginBottom: SPACING.xs }}>
-                            {getFirstCuisine(restaurant.cuisine)}
+                            {getDisplayCategory()}
                             <span className="mx-2 text-white/50">•</span>
                             {formatPrice(restaurant.price_for_two)} for two
                         </p>

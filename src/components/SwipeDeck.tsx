@@ -12,6 +12,7 @@ interface SwipeDeckProps {
     userLat: number;
     userLon: number;
     isDefaultLocation: boolean;
+    isLastSprintCard?: boolean; // Hide background card on last card
 }
 
 const SWIPE_THRESHOLD = 80;
@@ -53,6 +54,7 @@ export const SwipeDeck = memo(function SwipeDeck({
     userLat,
     userLon,
     isDefaultLocation,
+    isLastSprintCard = false,
 }: SwipeDeckProps) {
     const [isAnimatingOut, setIsAnimatingOut] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
@@ -97,9 +99,31 @@ export const SwipeDeck = memo(function SwipeDeck({
         if (isAnimatingOut) return;
         setIsAnimatingOut(true);
 
-        // Haptic feedback
-        if (navigator.vibrate) {
-            navigator.vibrate(10);
+        // Haptic feedback - works on most devices
+        try {
+            // Try navigator.vibrate first (Android, some browsers)
+            if ('vibrate' in navigator) {
+                navigator.vibrate(15);
+            }
+            // For iOS, use a brief audio pulse which can trigger haptic engine
+            if ('AudioContext' in window || 'webkitAudioContext' in window) {
+                const AudioContextClass = (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext ||
+                    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+                if (AudioContextClass) {
+                    const ctx = new AudioContextClass();
+                    const oscillator = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    oscillator.connect(gain);
+                    gain.connect(ctx.destination);
+                    gain.gain.value = 0.01; // Very quiet
+                    oscillator.frequency.value = 200;
+                    oscillator.start();
+                    oscillator.stop(ctx.currentTime + 0.01);
+                    setTimeout(() => ctx.close(), 100);
+                }
+            }
+        } catch (e) {
+            // Haptic not available, silently ignore
         }
 
         const targetX = direction === 'right' ? 400 : -400;
@@ -245,8 +269,8 @@ export const SwipeDeck = memo(function SwipeDeck({
             onMouseLeave={handleMouseLeave}
         >
 
-            {/* Next card - full opacity, ready immediately */}
-            {nextRestaurant && (
+            {/* Next card - hide on last sprint card to avoid showing 21st card */}
+            {nextRestaurant && !isLastSprintCard && (
                 <div className="absolute inset-4 scale-[0.97] z-10">
                     <BackgroundCard
                         restaurant={nextRestaurant}
