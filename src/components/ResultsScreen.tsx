@@ -46,7 +46,7 @@ export function ResultsScreen({
             <div
                 className="h-full overflow-y-auto overscroll-contain"
                 style={{
-                    paddingBottom: 'calc(88px + env(safe-area-inset-bottom, 16px))',
+                    paddingBottom: 'env(safe-area-inset-bottom, 16px)',
                     WebkitOverflowScrolling: 'touch'
                 }}
             >
@@ -63,6 +63,7 @@ export function ResultsScreen({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
                 >
+                    {/* Back Arrow */}
                     <button
                         onClick={onRetry}
                         className="flex items-center justify-center"
@@ -76,13 +77,13 @@ export function ResultsScreen({
 
                     <h1 className="text-lg font-semibold text-white">Your Match</h1>
 
-                    {/* Reset as subtle text button */}
+                    {/* Retry button (replaces Reset) */}
                     <button
-                        onClick={onResetTaste}
-                        className="flex items-center justify-center text-sm text-zinc-400 hover:text-white transition-colors"
+                        onClick={onRetry}
+                        className="flex items-center justify-center text-sm text-emerald-400 font-medium hover:text-emerald-300 transition-colors"
                         style={{ height: 44, paddingLeft: 8, paddingRight: 8 }}
                     >
-                        Reset
+                        Retry
                     </button>
                 </motion.header>
 
@@ -122,32 +123,6 @@ export function ResultsScreen({
                     />
                 </div>
             </div>
-
-            {/* Fixed Bottom CTA */}
-            <motion.div
-                className="fixed left-0 right-0 bottom-0 z-30 bg-gradient-to-t from-zinc-950 via-zinc-950 to-transparent"
-                style={{
-                    paddingTop: SPACING.xl,
-                    paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
-                    paddingLeft: SPACING.xl,
-                    paddingRight: SPACING.xl,
-                }}
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.3 }}
-            >
-                <button
-                    onClick={onRetry}
-                    className="w-full bg-white text-zinc-900 font-semibold text-base active:scale-[0.98] transition-transform"
-                    style={{
-                        padding: `${SPACING.lg}px ${SPACING.xl}px`,
-                        borderRadius: 16,
-                        minHeight: 56,
-                    }}
-                >
-                    Start New Sprint
-                </button>
-            </motion.div>
         </motion.div>
     );
 }

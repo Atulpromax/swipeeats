@@ -48,8 +48,11 @@ export function WinnerHero({ restaurant, userLat, userLon }: WinnerHeroProps) {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4, ease: 'easeOut' }}
         >
-            {/* Hero Image */}
-            <div className="relative w-full" style={{ aspectRatio: '4/3' }}>
+            {/* Hero Image - 70% of viewport height */}
+            <div
+                className="relative w-full"
+                style={{ height: '70vh', minHeight: '400px' }}
+            >
                 <Image
                     src={heroImage}
                     alt={restaurant.name}
@@ -59,17 +62,17 @@ export function WinnerHero({ restaurant, userLat, userLon }: WinnerHeroProps) {
                     priority
                 />
 
-                {/* Gradient Overlay - Stronger */}
+                {/* Gradient Overlay - Stronger at bottom */}
                 <div
                     className="absolute inset-0 pointer-events-none"
                     style={{
                         background: `
                             linear-gradient(180deg, 
-                                rgba(0,0,0,0.35) 0%, 
-                                rgba(0,0,0,0) 30%,
+                                rgba(0,0,0,0.3) 0%, 
+                                rgba(0,0,0,0) 25%,
                                 rgba(0,0,0,0) 40%,
-                                rgba(0,0,0,0.6) 65%,
-                                rgba(0,0,0,0.95) 100%
+                                rgba(0,0,0,0.5) 60%,
+                                rgba(0,0,0,0.9) 100%
                             )
                         `
                     }}
