@@ -67,6 +67,6 @@ export function useSprint() {
         recordSwipe,
         resetSprint,
         allSwipedIds,
-        progress: sprintState.swipeCount / SPRINT_SIZE,
+        progress: (sprintState.swipeCount / SPRINT_SIZE) * 100,
     };
 }
