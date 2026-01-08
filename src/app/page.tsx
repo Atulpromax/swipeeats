@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Restaurant } from '@/types';
 import { useRestaurants } from '@/hooks/useRestaurants';
@@ -30,10 +30,11 @@ export default function HomePage() {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
-  const [sprintKey, setSprintKey] = useState(0); // Force SwipeDeck re-render on retry
-
-  // FIX: Track if we've ever loaded restaurants (to prevent showing empty state on first load)
+  const [sprintKey, setSprintKey] = useState(0);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
+  // Use STATE for deck so changes trigger re-render immediately
+  const [sprintDeck, setSprintDeck] = useState<Restaurant[]>([]);
 
   // Mark when restaurants first load
   useEffect(() => {
@@ -42,62 +43,49 @@ export default function HomePage() {
     }
   }, [restaurants, hasLoadedOnce]);
 
-  // Lock the restaurant deck at the start of each sprint
-  const sprintDeckRef = useRef<Restaurant[]>([]);
-  const sprintStartedRef = useRef(false);
-
   // Get scored and filtered restaurants
   const scoredRestaurants = useMemo(() => {
     if (restaurants.length === 0) return [];
     return getScoredRestaurants(restaurants, allSwipedIds);
   }, [restaurants, getScoredRestaurants, allSwipedIds]);
 
-  // Lock the sprint deck when starting a new sprint
+  // Build deck when needed
   useEffect(() => {
-    const shouldUpdateDeck =
-      (!isComplete && sprintSwipeCount === 0 && (sprintDeckRef.current.length === 0 || currentIndex === 0)) ||
-      (scoredRestaurants.length > 0 && sprintDeckRef.current.length === 0);
-
-    if (shouldUpdateDeck) {
-      sprintDeckRef.current = [...scoredRestaurants];
-      sprintStartedRef.current = true;
+    // Only build deck if:
+    // 1. We have scored restaurants AND
+    // 2. Either deck is empty OR we're at the start of a new sprint
+    if (scoredRestaurants.length > 0 && (sprintDeck.length === 0 || (sprintSwipeCount === 0 && currentIndex === 0))) {
+      setSprintDeck([...scoredRestaurants]);
     }
-  }, [scoredRestaurants, isComplete, sprintSwipeCount, currentIndex]);
-
-  // Use the locked sprint deck
-  const activeDeck = sprintDeckRef.current;
+  }, [scoredRestaurants, sprintDeck.length, sprintSwipeCount, currentIndex]);
 
   // Handle swipe action
   const handleSwipe = useCallback((direction: 'left' | 'right') => {
-    const restaurant = activeDeck[currentIndex];
+    const restaurant = sprintDeck[currentIndex];
     if (!restaurant) return;
 
     const liked = direction === 'right';
     recordPreference(restaurant, liked);
     recordSprintSwipe(restaurant, liked);
     setCurrentIndex(prev => prev + 1);
-  }, [activeDeck, currentIndex, recordPreference, recordSprintSwipe]);
+  }, [sprintDeck, currentIndex, recordPreference, recordSprintSwipe]);
 
-  // Handle retry (new sprint)
+  // Handle retry (new sprint) - FIXED: Use functional update to get fresh restaurants
   const handleRetry = useCallback(() => {
-    // 1. Reset sprint state (this clears allSwipedIds)
     resetSprint();
-    // 2. Reset current index
     setCurrentIndex(0);
-    // 3. Force SwipeDeck to unmount/remount
     setSprintKey(prev => prev + 1);
-    // 4. IMPORTANT: Clear the deck so useEffect rebuilds it with fresh scoredRestaurants
-    //    Don't use scoredRestaurants here as it's a stale closure!
-    sprintDeckRef.current = [];
-  }, [resetSprint]);
+    // Build new deck directly from restaurants (no filtering for retry)
+    const freshDeck = getScoredRestaurants(restaurants, new Set());
+    setSprintDeck(freshDeck);
+  }, [resetSprint, getScoredRestaurants, restaurants]);
 
   // Handle full reset
   const handleResetTaste = useCallback(() => {
     resetPreferences();
     resetSprint();
     setCurrentIndex(0);
-    // Deck will rebuild on next render via useEffect
-    sprintDeckRef.current = [];
+    setSprintDeck([]);
   }, [resetPreferences, resetSprint]);
 
   // Handle restaurant selection
@@ -105,23 +93,18 @@ export default function HomePage() {
     setSelectedRestaurant(restaurant);
   }, []);
 
-  // LOADING STATE: Show skeleton while loading
+  // LOADING STATE
   if (loading) {
     return (
       <main className="min-h-screen bg-zinc-950 overflow-hidden">
-        {/* Skeleton Counter */}
         <div className="fixed top-4 right-4 z-50">
           <div className="w-12 h-12 rounded-full bg-zinc-800 animate-pulse" />
         </div>
-
-        {/* Skeleton Card */}
         <div className="fixed inset-0 pb-24">
           <div className="relative w-full h-full">
             <SkeletonCard />
           </div>
         </div>
-
-        {/* Skeleton Actions */}
         <div
           className="fixed left-0 right-0 bottom-0 z-40 flex justify-center gap-8 px-4 py-4"
           style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
@@ -152,8 +135,9 @@ export default function HomePage() {
     );
   }
 
-  // EMPTY STATE: Only show if we've loaded once AND deck is truly empty (not first load)
-  if (hasLoadedOnce && activeDeck.length === 0 && !isComplete && scoredRestaurants.length === 0) {
+  // EMPTY STATE: Only show if we've loaded once AND truly have no restaurants
+  // Note: Check restaurants.length, not sprintDeck, to avoid showing during deck rebuild
+  if (hasLoadedOnce && restaurants.length === 0) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
         <div className="text-center max-w-sm">
@@ -183,8 +167,8 @@ export default function HomePage() {
       {/* Swipe Deck */}
       <div className="fixed inset-0 pb-24">
         <SwipeDeck
-          key={sprintKey}  // Force complete re-mount on retry
-          restaurants={activeDeck}
+          key={sprintKey}
+          restaurants={sprintDeck}
           currentIndex={currentIndex}
           onSwipe={handleSwipe}
           userLat={userLocation.latitude}
