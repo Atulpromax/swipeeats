@@ -97,16 +97,20 @@ export const SwipeDeck = memo(function SwipeDeck({
         if (isAnimatingOut) return;
         setIsAnimatingOut(true);
 
-        // Call onSwipe IMMEDIATELY for instant feedback
-        onSwipe(direction);
+        // Haptic feedback
+        if (navigator.vibrate) {
+            navigator.vibrate(10);
+        }
 
         const targetX = direction === 'right' ? 400 : -400;
 
         animate(x, targetX, {
             type: 'spring',
-            stiffness: 800,  // Much faster
-            damping: 40,
+            stiffness: 600,
+            damping: 35,
             onComplete: () => {
+                // Call onSwipe AFTER animation to keep card in sync
+                onSwipe(direction);
                 x.set(0);
                 setIsAnimatingOut(false);
             },
