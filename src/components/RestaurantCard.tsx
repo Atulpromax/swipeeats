@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { memo, useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { Restaurant } from '@/types';
 import { formatDistance, getDirectionsUrl } from '@/utils/location';
@@ -14,7 +14,8 @@ interface RestaurantCardProps {
     onScrollStateChange?: (isScrolling: boolean) => void;
 }
 
-export function RestaurantCard({
+// Memoized for performance - prevents re-renders during swipe
+export const RestaurantCard = memo(function RestaurantCard({
     restaurant,
     userLat,
     userLon,
@@ -23,7 +24,6 @@ export function RestaurantCard({
     onScrollStateChange,
 }: RestaurantCardProps) {
     const [imageError, setImageError] = useState(false);
-    const [isScrolling, setIsScrolling] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -31,47 +31,46 @@ export function RestaurantCard({
     const distance = formatDistance(restaurant.distance || 0);
     const directionsUrl = getDirectionsUrl(userLat, userLon, restaurant.latitude, restaurant.longitude, restaurant.name);
 
-    // Detect scrolling to prevent accidental swipes
-    useEffect(() => {
-        const scrollContainer = scrollRef.current;
-        if (!scrollContainer || !isActive) return;
-
-        const handleScroll = () => {
-            setIsScrolling(true);
-            onScrollStateChange?.(true);
-
-            clearTimeout(scrollTimeoutRef.current);
-            scrollTimeoutRef.current = setTimeout(() => {
-                setIsScrolling(false);
-                onScrollStateChange?.(false);
-            }, 150);
-        };
-
-        scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-        return () => {
-            scrollContainer.removeEventListener('scroll', handleScroll);
-            clearTimeout(scrollTimeoutRef.current);
-        };
-    }, [isActive, onScrollStateChange]);
-
-    // Parse popular dishes (always a string in our types)
-    const dishes = restaurant.popular_dishes
-        ? restaurant.popular_dishes.split(',').map((d: string) => d.trim()).filter(Boolean)
-        : [];
-
-    // Ambiance tags is always an array
+    // Parse ambiance tags
     const ambianceTags = restaurant.ambiance_tags || [];
+    const visibleTags = ambianceTags.slice(0, 4);
+    const remainingCount = Math.max(0, ambianceTags.length - 4);
+
+    // Filter real photos (no placeholders)
+    const galleryPhotos = (restaurant.image_urls || [])
+        .slice(1, 7)
+        .filter(url => url && !url.includes('placeholder'));
+
+    // Scroll detection for gesture isolation
+    const handleScroll = useCallback(() => {
+        onScrollStateChange?.(true);
+        clearTimeout(scrollTimeoutRef.current);
+        scrollTimeoutRef.current = setTimeout(() => {
+            onScrollStateChange?.(false);
+        }, 150);
+    }, [onScrollStateChange]);
+
+    useEffect(() => {
+        const scrollEl = scrollRef.current;
+        if (!scrollEl || !isActive) return;
+
+        scrollEl.addEventListener('scroll', handleScroll, { passive: true });
+        return () => {
+            scrollEl.removeEventListener('scroll', handleScroll);
+            clearTimeout(scrollTimeoutRef.current);
+        };
+    }, [isActive, handleScroll]);
 
     return (
-        <div className="relative w-full h-full bg-zinc-900">
-            {/* Scrollable Container */}
+        <div className="relative w-full h-full bg-zinc-950 rounded-3xl overflow-hidden">
+            {/* Scrollable Content */}
             <div
                 ref={scrollRef}
-                className="w-full h-full overflow-y-auto overscroll-contain hide-scrollbar"
+                className="w-full h-full overflow-y-auto overscroll-contain"
                 style={{ WebkitOverflowScrolling: 'touch' }}
             >
-                {/* EXPANDED Hero Image - Now 70% of card height */}
-                <div className="relative w-full h-[70vh]">
+                {/* Hero Image Section */}
+                <div className="relative w-full aspect-[3/4]">
                     {!imageError ? (
                         <Image
                             src={imageUrl}
@@ -88,169 +87,155 @@ export function RestaurantCard({
                         </div>
                     )}
 
-                    {/* Top badges - Rating & Distance */}
-                    <div className="absolute top-4 left-4 right-4 flex items-start justify-between z-10">
-                        <div className="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm flex items-center gap-1.5">
-                            <span className="text-emerald-400 text-sm">⭐</span>
+                    {/* Gradient Overlay */}
+                    <div
+                        className="absolute inset-0"
+                        style={{
+                            background: 'linear-gradient(180deg, rgba(0,0,0,0.2) 0%, transparent 30%, transparent 50%, rgba(0,0,0,0.85) 100%)'
+                        }}
+                    />
+
+                    {/* Top Badges: Rating & Distance */}
+                    <div className="absolute top-4 left-4 right-4 flex justify-between z-10">
+                        {/* Rating Badge */}
+                        <div className="px-3 py-2 rounded-xl bg-black/50 backdrop-blur-sm flex items-center gap-1.5">
+                            <span className="text-amber-400 text-sm">⭐</span>
                             <span className="text-white text-sm font-semibold">{restaurant.rating}</span>
                         </div>
-                        <div className="px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
+
+                        {/* Distance Badge */}
+                        <div className="px-3 py-2 rounded-xl bg-black/50 backdrop-blur-sm flex items-center gap-1.5">
+                            <span className="text-blue-400 text-sm">📍</span>
                             <span className="text-white text-sm font-medium">{distance}</span>
                         </div>
                     </div>
 
-                    {/* GRADIENT SCRIM for Text Readability (60% transparent → 100% dark) */}
-                    <div
-                        className="absolute inset-0 z-[1]"
-                        style={{
-                            background: 'linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.9) 100%)'
-                        }}
-                    />
-
-                    {/* Restaurant Name OVERLAID on Image - Bottom Left */}
-                    <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
+                    {/* Title & Meta on Image */}
+                    <div className="absolute bottom-0 left-0 right-0 p-5 z-10">
                         <h2
-                            className="text-white text-3xl font-bold leading-tight mb-0"
-                            style={{
-                                textShadow: '0 2px 8px rgba(0, 0, 0, 0.6)',
-                                fontWeight: 700
-                            }}
+                            className="text-white text-2xl font-bold leading-tight mb-2"
+                            style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}
                         >
                             {restaurant.name}
                         </h2>
+                        <p className="text-white/80 text-sm">
+                            {restaurant.cuisine || 'Multi-cuisine'}
+                            <span className="mx-2 text-white/40">•</span>
+                            ₹{restaurant.price_for_two} for two
+                            <span className="mx-2 text-white/40">•</span>
+                            {restaurant.area}
+                        </p>
                     </div>
                 </div>
 
-                {/* Compact Info Pills Below Image */}
-                <div className="px-4 py-3 flex items-center gap-2 flex-wrap bg-zinc-900">
-                    <div className="px-3 py-1.5 rounded-full bg-zinc-800/80 border border-zinc-700">
-                        <span className="text-zinc-200 text-sm font-medium">{restaurant.cuisine || 'Various'}</span>
-                    </div>
-                    <div className="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30">
-                        <span className="text-emerald-400 text-sm font-semibold">₹{restaurant.price_for_two}</span>
-                        <span className="text-emerald-400/70 text-xs ml-1">for two</span>
-                    </div>
-                    <div className="px-3 py-1.5 rounded-full bg-zinc-800/80 border border-zinc-700">
-                        <span className="text-zinc-300 text-sm">📍 {restaurant.area}</span>
-                    </div>
-                </div>
+                {/* Content Below Image */}
+                <div className="p-5 space-y-5 bg-zinc-950">
 
-                {/* Popular Dishes */}
-                {dishes.length > 0 && (
-                    <div className="px-4 py-4 border-t border-zinc-800/50">
-                        <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-                            Popular Dishes
-                        </h3>
-                        <div className="flex flex-wrap gap-2">
-                            {dishes.slice(0, 6).map((dish: string, idx: number) => (
-                                <span
-                                    key={idx}
-                                    className="px-3 py-1.5 rounded-full bg-orange-500/10 text-orange-300 text-sm border border-orange-500/20"
+                    {/* CTA Buttons */}
+                    <div className="space-y-3">
+                        {/* Primary: Directions */}
+                        <a
+                            href={directionsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl bg-emerald-500 text-white font-semibold active:scale-[0.98] transition-transform"
+                            style={{ minHeight: '52px' }}
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                            </svg>
+                            Get Directions
+                        </a>
+
+                        {/* Secondary Row: Zomato + Call */}
+                        <div className="flex gap-3">
+                            {restaurant.url && (
+                                <a
+                                    href={restaurant.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-zinc-800 text-white font-medium border border-zinc-700 active:scale-[0.98] transition-transform"
+                                    style={{ minHeight: '48px' }}
                                 >
-                                    {dish}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Ambiance Tags */}
-                {ambianceTags.length > 0 && (
-                    <div className="px-4 py-4 border-t border-zinc-800/50">
-                        <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-                            Ambiance
-                        </h3>
-                        <div className="flex flex-wrap gap-2">
-                            {ambianceTags.map((tag: string, idx: number) => (
-                                <span
-                                    key={idx}
-                                    className="px-3 py-1.5 rounded-full bg-purple-500/10 text-purple-300 text-sm border border-purple-500/20"
+                                    <span className="text-base">🍽️</span>
+                                    Zomato
+                                </a>
+                            )}
+                            {restaurant.phone && (
+                                <a
+                                    href={`tel:${restaurant.phone}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-zinc-800 text-white font-medium border border-zinc-700 active:scale-[0.98] transition-transform"
+                                    style={{ minHeight: '48px' }}
                                 >
-                                    {tag}
-                                </span>
-                            ))}
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                    </svg>
+                                    Call
+                                </a>
+                            )}
                         </div>
                     </div>
-                )}
 
-                {/* Quick Actions - MOVED BELOW THE FOLD (Only visible when scrolling) */}
-                <div className="px-4 py-4 border-t border-zinc-800/50">
-                    <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-                        Quick Actions
-                    </h3>
-                    <div className="grid grid-cols-3 gap-3">
-                        {restaurant.phone && (
-                            <a
-                                href={`tel:${restaurant.phone}`}
-                                className="flex flex-col items-center gap-2 p-4 rounded-xl bg-zinc-800/50 border border-zinc-700/50 active:scale-95 transition-all hover:border-emerald-500/30"
-                                onClick={(e) => e.stopPropagation()}
+                    {/* Ambiance Chips */}
+                    {ambianceTags.length > 0 && (
+                        <div>
+                            <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wide mb-3">Ambiance</h3>
+                            <div className="flex flex-wrap gap-2">
+                                {visibleTags.map((tag: string, idx: number) => (
+                                    <span
+                                        key={idx}
+                                        className="px-3 py-1.5 rounded-full bg-zinc-800 text-zinc-300 text-sm border border-zinc-700"
+                                    >
+                                        {tag}
+                                    </span>
+                                ))}
+                                {remainingCount > 0 && (
+                                    <span className="px-3 py-1.5 rounded-full bg-zinc-800 text-zinc-500 text-sm border border-zinc-700">
+                                        +{remainingCount}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* More Photos Carousel */}
+                    {galleryPhotos.length > 0 && (
+                        <div>
+                            <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wide mb-3">More Photos</h3>
+                            <div
+                                className="flex gap-3 overflow-x-auto pb-2 -mx-5 px-5"
+                                style={{ scrollbarWidth: 'none' }}
                             >
-                                <span className="text-2xl">📞</span>
-                                <span className="text-xs text-zinc-300 font-medium">Call</span>
-                            </a>
-                        )}
-                        {restaurant.latitude && restaurant.longitude && (
-                            <a
-                                href={directionsUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex flex-col items-center gap-2 p-4 rounded-xl bg-zinc-800/50 border border-zinc-700/50 active:scale-95 transition-all hover:border-emerald-500/30"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <span className="text-2xl">🗺️</span>
-                                <span className="text-xs text-zinc-300 font-medium">Directions</span>
-                            </a>
-                        )}
-                        {restaurant.url && (
-                            <a
-                                href={restaurant.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex flex-col items-center gap-2 p-4 rounded-xl bg-zinc-800/50 border border-zinc-700/50 active:scale-95 transition-all hover:border-emerald-500/30"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <span className="text-2xl">🍴</span>
-                                <span className="text-xs text-zinc-300 font-medium">Zomato</span>
-                            </a>
-                        )}
-                    </div>
+                                {galleryPhotos.map((url, idx) => (
+                                    <div key={idx} className="relative flex-shrink-0 w-28 h-28 rounded-2xl overflow-hidden bg-zinc-800">
+                                        <Image
+                                            src={url}
+                                            alt={`${restaurant.name} ${idx + 2}`}
+                                            fill
+                                            className="object-cover"
+                                            sizes="112px"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Address */}
+                    {restaurant.address && (
+                        <div>
+                            <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wide mb-2">Address</h3>
+                            <p className="text-sm text-zinc-400 leading-relaxed">{restaurant.address}</p>
+                        </div>
+                    )}
+
+                    {/* Bottom padding for safe area */}
+                    <div className="h-4" />
                 </div>
-
-                {/* Full Address */}
-                {restaurant.address && (
-                    <div className="px-4 py-4 border-t border-zinc-800/50">
-                        <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                            Address
-                        </h3>
-                        <p className="text-sm text-zinc-300 leading-relaxed">{restaurant.address}</p>
-                    </div>
-                )}
-
-                {/* Image Gallery */}
-                {restaurant.image_urls && restaurant.image_urls.length > 1 && (
-                    <div className="px-4 py-4 border-t border-zinc-800/50">
-                        <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-                            More Photos
-                        </h3>
-                        <div className="grid grid-cols-3 gap-2">
-                            {restaurant.image_urls.slice(1, 7).map((url, idx) => (
-                                <div key={idx} className="relative aspect-square rounded-lg overflow-hidden bg-zinc-800">
-                                    <Image
-                                        src={url}
-                                        alt={`${restaurant.name} photo ${idx + 2}`}
-                                        fill
-                                        className="object-cover"
-                                        sizes="33vw"
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Bottom Padding for Actions Bar */}
-                <div className="h-6" />
             </div>
         </div>
     );
-}
+});

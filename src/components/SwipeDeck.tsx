@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, memo, useMemo } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Restaurant } from '@/types';
 import { RestaurantCard } from './RestaurantCard';
@@ -15,9 +15,38 @@ interface SwipeDeckProps {
 }
 
 const SWIPE_THRESHOLD = 80;
-const VELOCITY_THRESHOLD = 0.5; // pixels per ms
+const VELOCITY_THRESHOLD = 0.5;
+const PRELOAD_COUNT = 5; // Preload images for next 5 cards
 
-export function SwipeDeck({
+// Memoized background card for performance
+const BackgroundCard = memo(function BackgroundCard({
+    restaurant,
+    userLat,
+    userLon,
+    isDefaultLocation,
+    index
+}: {
+    restaurant: Restaurant;
+    userLat: number;
+    userLon: number;
+    isDefaultLocation: boolean;
+    index: number;
+}) {
+    return (
+        <div className="w-full h-full rounded-3xl overflow-hidden bg-zinc-900 shadow-2xl">
+            <RestaurantCard
+                key={`bg-${restaurant.name}-${index}`}
+                restaurant={restaurant}
+                userLat={userLat}
+                userLon={userLon}
+                isDefaultLocation={isDefaultLocation}
+                isActive={false}
+            />
+        </div>
+    );
+});
+
+export const SwipeDeck = memo(function SwipeDeck({
     restaurants,
     currentIndex,
     onSwipe,
@@ -40,8 +69,22 @@ export function SwipeDeck({
     const lastTouchRef = useRef<{ x: number; time: number } | null>(null);
     const isHorizontalSwipeRef = useRef<boolean | null>(null);
 
+    // Get current and next restaurants (only render top 2)
     const currentRestaurant = restaurants[currentIndex];
     const nextRestaurant = restaurants[currentIndex + 1];
+
+    // Preload images for next N cards (runs in background)
+    useEffect(() => {
+        const imagesToPreload = restaurants
+            .slice(currentIndex + 1, currentIndex + 1 + PRELOAD_COUNT)
+            .flatMap(r => r.image_urls?.slice(0, 2) || [])
+            .filter(Boolean);
+
+        imagesToPreload.forEach(url => {
+            const img = new Image();
+            img.src = url;
+        });
+    }, [currentIndex, restaurants]);
 
     const performSwipe = useCallback((direction: 'left' | 'right') => {
         if (isAnimatingOut) return;
@@ -51,12 +94,15 @@ export function SwipeDeck({
 
         animate(x, targetX, {
             type: 'spring',
-            stiffness: 300,
-            damping: 30,
+            stiffness: 400,
+            damping: 35,
             onComplete: () => {
-                onSwipe(direction);
-                x.set(0);
-                setIsAnimatingOut(false);
+                // Defer state update to after animation
+                requestAnimationFrame(() => {
+                    onSwipe(direction);
+                    x.set(0);
+                    setIsAnimatingOut(false);
+                });
             },
         });
     }, [x, onSwipe, isAnimatingOut]);
@@ -72,7 +118,7 @@ export function SwipeDeck({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isAnimatingOut, performSwipe]);
 
-    // Touch handlers for swipe
+    // Touch handlers
     const handleTouchStart = useCallback((e: React.TouchEvent) => {
         if (isAnimatingOut) return;
         const touch = e.touches[0];
@@ -88,14 +134,12 @@ export function SwipeDeck({
         const deltaX = touch.clientX - touchStartRef.current.x;
         const deltaY = touch.clientY - touchStartRef.current.y;
 
-        // Determine swipe direction on first significant movement
         if (isHorizontalSwipeRef.current === null && (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10)) {
             isHorizontalSwipeRef.current = Math.abs(deltaX) > Math.abs(deltaY);
         }
 
-        // If horizontal swipe, update card position
         if (isHorizontalSwipeRef.current) {
-            e.preventDefault(); // Prevent scroll
+            e.preventDefault();
             setIsDragging(true);
             x.set(deltaX);
             lastTouchRef.current = { x: touch.clientX, time: Date.now() };
@@ -137,7 +181,7 @@ export function SwipeDeck({
         setIsDragging(false);
     }, [x, performSwipe, isAnimatingOut]);
 
-    // Mouse handlers for desktop
+    // Mouse handlers
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         if (isAnimatingOut) return;
         touchStartRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
@@ -175,8 +219,10 @@ export function SwipeDeck({
 
     if (!currentRestaurant) {
         return (
-            <div className="flex items-center justify-center h-full">
-                <p className="text-zinc-400">No more restaurants</p>
+            <div className="flex flex-col items-center justify-center h-full gap-4">
+                <span className="text-5xl">🍽️</span>
+                <p className="text-zinc-400 text-lg">No more restaurants</p>
+                <p className="text-zinc-500 text-sm">You&apos;ve seen all the restaurants!</p>
             </div>
         );
     }
@@ -188,34 +234,35 @@ export function SwipeDeck({
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseLeave}
         >
-            {/* Background card - Third in stack */}
+            {/* Background card hint (just a placeholder, no content) */}
             {restaurants[currentIndex + 2] && (
-                <div className="absolute inset-4 opacity-30 scale-[0.92] z-0">
-                    <div className="w-full h-full rounded-3xl overflow-hidden bg-zinc-900 shadow-xl" />
+                <div className="absolute inset-4 opacity-25 scale-[0.92] z-0">
+                    <div className="w-full h-full rounded-3xl bg-zinc-800" />
                 </div>
             )}
 
-            {/* Background card - Second in stack */}
+            {/* Next card (only render one background card for performance) */}
             {nextRestaurant && (
                 <div className="absolute inset-4 opacity-60 scale-[0.96] z-10">
-                    <div className="w-full h-full rounded-3xl overflow-hidden bg-zinc-900 shadow-2xl">
-                        <RestaurantCard
-                            key={`next-${nextRestaurant.name}-${currentIndex + 1}`}
-                            restaurant={nextRestaurant}
-                            userLat={userLat}
-                            userLon={userLon}
-                            isDefaultLocation={isDefaultLocation}
-                            isActive={false}
-                        />
-                    </div>
+                    <BackgroundCard
+                        restaurant={nextRestaurant}
+                        userLat={userLat}
+                        userLon={userLon}
+                        isDefaultLocation={isDefaultLocation}
+                        index={currentIndex + 1}
+                    />
                 </div>
             )}
 
-            {/* Current card - Top of stack */}
+            {/* Current card - uses GPU-accelerated transforms */}
             <motion.div
                 key={`current-${currentRestaurant.name}-${currentIndex}`}
                 className="absolute inset-4 z-20"
-                style={{ x, rotate }}
+                style={{
+                    x,
+                    rotate,
+                    willChange: 'transform', // GPU hint
+                }}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
@@ -223,7 +270,7 @@ export function SwipeDeck({
             >
                 {/* NOPE indicator */}
                 <motion.div
-                    className="absolute top-20 left-8 z-50 px-5 py-2.5 rounded-xl border-4 border-red-500 bg-red-500/30"
+                    className="absolute top-20 left-8 z-50 px-5 py-2.5 rounded-xl border-4 border-red-500 bg-red-500/30 backdrop-blur-sm"
                     style={{ opacity: nopeOpacity, rotate: -15 }}
                 >
                     <span className="text-2xl font-black text-red-500">NOPE</span>
@@ -231,14 +278,14 @@ export function SwipeDeck({
 
                 {/* LIKE indicator */}
                 <motion.div
-                    className="absolute top-20 right-8 z-50 px-5 py-2.5 rounded-xl border-4 border-emerald-400 bg-emerald-400/30"
+                    className="absolute top-20 right-8 z-50 px-5 py-2.5 rounded-xl border-4 border-emerald-400 bg-emerald-400/30 backdrop-blur-sm"
                     style={{ opacity: likeOpacity, rotate: 15 }}
                 >
                     <span className="text-2xl font-black text-emerald-400">LIKE</span>
                 </motion.div>
 
                 {/* Card */}
-                <div className="w-full h-full rounded-3xl overflow-hidden shadow-2xl bg-zinc-900">
+                <div className="w-full h-full">
                     <RestaurantCard
                         restaurant={currentRestaurant}
                         userLat={userLat}
@@ -250,4 +297,4 @@ export function SwipeDeck({
             </motion.div>
         </div>
     );
-}
+});

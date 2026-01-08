@@ -11,6 +11,7 @@ import { ActionsBar } from '@/components/ActionsBar';
 import { SprintCounter } from '@/components/SprintCounter';
 import { ResultsScreen } from '@/components/ResultsScreen';
 import { RestaurantDetail } from '@/components/RestaurantDetail';
+import { SkeletonCard } from '@/components/SkeletonCard';
 
 export default function HomePage() {
   const { restaurants, loading, error, userLocation } = useRestaurants();
@@ -30,23 +31,28 @@ export default function HomePage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
 
-  // CRITICAL FIX: Lock the restaurant deck at the start of each sprint
-  // This prevents re-ranking during swipes which causes the "next card" to change mid-swipe
+  // FIX: Track if we've ever loaded restaurants (to prevent showing empty state on first load)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
+  // Mark when restaurants first load
+  useEffect(() => {
+    if (restaurants.length > 0 && !hasLoadedOnce) {
+      setHasLoadedOnce(true);
+    }
+  }, [restaurants, hasLoadedOnce]);
+
+  // Lock the restaurant deck at the start of each sprint
   const sprintDeckRef = useRef<Restaurant[]>([]);
   const sprintStartedRef = useRef(false);
 
-  // Get scored and filtered restaurants (for initial ranking only)
+  // Get scored and filtered restaurants
   const scoredRestaurants = useMemo(() => {
     if (restaurants.length === 0) return [];
     return getScoredRestaurants(restaurants, allSwipedIds);
   }, [restaurants, getScoredRestaurants, allSwipedIds]);
 
-  // Lock the sprint deck when starting a new sprint or when restaurants first load
+  // Lock the sprint deck when starting a new sprint
   useEffect(() => {
-    // Only update the deck if:
-    // 1. Sprint just completed (isComplete is true) - wait for reset
-    // 2. We have restaurants but deck is empty - initial load
-    // 3. Sprint was reset (currentIndex === 0 and swipe count === 0)
     const shouldUpdateDeck =
       (!isComplete && sprintSwipeCount === 0 && (sprintDeckRef.current.length === 0 || currentIndex === 0)) ||
       (scoredRestaurants.length > 0 && sprintDeckRef.current.length === 0);
@@ -57,7 +63,7 @@ export default function HomePage() {
     }
   }, [scoredRestaurants, isComplete, sprintSwipeCount, currentIndex]);
 
-  // Use the locked sprint deck instead of live-updating scoredRestaurants
+  // Use the locked sprint deck
   const activeDeck = sprintDeckRef.current;
 
   // Handle swipe action
@@ -71,17 +77,21 @@ export default function HomePage() {
     setCurrentIndex(prev => prev + 1);
   }, [activeDeck, currentIndex, recordPreference, recordSprintSwipe]);
 
-  // Handle retry (new sprint, keep preferences)
+  // Handle retry (new sprint)
   const handleRetry = useCallback(() => {
     resetSprint();
     setCurrentIndex(0);
-  }, [resetSprint]);
+    // Immediately rebuild deck from scored restaurants
+    sprintDeckRef.current = [...scoredRestaurants];
+  }, [resetSprint, scoredRestaurants]);
 
   // Handle full reset
   const handleResetTaste = useCallback(() => {
     resetPreferences();
     resetSprint();
     setCurrentIndex(0);
+    // Deck will rebuild on next render via useEffect
+    sprintDeckRef.current = [];
   }, [resetPreferences, resetSprint]);
 
   // Handle restaurant selection
@@ -89,19 +99,35 @@ export default function HomePage() {
     setSelectedRestaurant(restaurant);
   }, []);
 
-  // Loading state
+  // LOADING STATE: Show skeleton while loading
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="text-center px-6">
-          <div className="w-10 h-10 border-[3px] border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-zinc-400 text-sm">Finding restaurants near you...</p>
+      <main className="min-h-screen bg-zinc-950 overflow-hidden">
+        {/* Skeleton Counter */}
+        <div className="fixed top-4 right-4 z-50">
+          <div className="w-12 h-12 rounded-full bg-zinc-800 animate-pulse" />
         </div>
-      </div>
+
+        {/* Skeleton Card */}
+        <div className="fixed inset-0 pb-24">
+          <div className="relative w-full h-full">
+            <SkeletonCard />
+          </div>
+        </div>
+
+        {/* Skeleton Actions */}
+        <div
+          className="fixed left-0 right-0 bottom-0 z-40 flex justify-center gap-8 px-4 py-4"
+          style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
+        >
+          <div className="w-16 h-16 rounded-full bg-zinc-800 animate-pulse" />
+          <div className="w-16 h-16 rounded-full bg-zinc-800 animate-pulse" />
+        </div>
+      </main>
     );
   }
 
-  // Error state
+  // ERROR STATE
   if (error) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
@@ -120,14 +146,14 @@ export default function HomePage() {
     );
   }
 
-  // No restaurants left
-  if (activeDeck.length === 0 && !isComplete) {
+  // EMPTY STATE: Only show if we've loaded once AND deck is truly empty (not first load)
+  if (hasLoadedOnce && activeDeck.length === 0 && !isComplete && scoredRestaurants.length === 0) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
         <div className="text-center max-w-sm">
           <div className="text-5xl mb-5">🍽️</div>
           <h1 className="text-xl font-bold text-white mb-2">No more restaurants</h1>
-          <p className="text-zinc-400 text-sm mb-6">You've seen all the restaurants!</p>
+          <p className="text-zinc-400 text-sm mb-6">You&apos;ve seen all the restaurants!</p>
           <button
             onClick={handleResetTaste}
             className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-medium active:scale-95 transition-transform"
