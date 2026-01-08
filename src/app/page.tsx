@@ -11,7 +11,7 @@ import { ActionsBar } from '@/components/ActionsBar';
 import { SprintCounter } from '@/components/SprintCounter';
 import { ResultsScreen } from '@/components/ResultsScreen';
 import { RestaurantDetail } from '@/components/RestaurantDetail';
-import { SkeletonCard } from '@/components/SkeletonCard';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export default function HomePage() {
   const { restaurants, loading, error, userLocation } = useRestaurants();
@@ -93,27 +93,9 @@ export default function HomePage() {
     setSelectedRestaurant(restaurant);
   }, []);
 
-  // LOADING STATE
+  // LOADING STATE - Premium branded loading screen
   if (loading) {
-    return (
-      <main className="min-h-screen bg-zinc-950 overflow-hidden">
-        <div className="fixed top-4 right-4 z-50">
-          <div className="w-12 h-12 rounded-full bg-zinc-800 animate-pulse" />
-        </div>
-        <div className="fixed inset-0 pb-24">
-          <div className="relative w-full h-full">
-            <SkeletonCard />
-          </div>
-        </div>
-        <div
-          className="fixed left-0 right-0 bottom-0 z-40 flex justify-center gap-8 px-4 py-4"
-          style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
-        >
-          <div className="w-16 h-16 rounded-full bg-zinc-800 animate-pulse" />
-          <div className="w-16 h-16 rounded-full bg-zinc-800 animate-pulse" />
-        </div>
-      </main>
-    );
+    return <LoadingScreen />;
   }
 
   // ERROR STATE
