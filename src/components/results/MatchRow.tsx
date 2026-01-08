@@ -25,6 +25,13 @@ export function MatchRow({ restaurant, onSelect }: MatchRowProps) {
     const imageUrl = restaurant.image_urls?.[0] || '/placeholder-restaurant.jpg';
     const distance = formatDistance(restaurant.distance || 0);
 
+    // Get first cuisine only
+    const getFirstCuisine = (cuisineStr: string | undefined) => {
+        if (!cuisineStr) return 'Restaurant';
+        const first = cuisineStr.split(',')[0].trim();
+        return first || 'Restaurant';
+    };
+
     return (
         <button
             onClick={() => onSelect(restaurant)}
@@ -69,7 +76,7 @@ export function MatchRow({ restaurant, onSelect }: MatchRowProps) {
                     <span className="text-amber-400">★</span>{' '}
                     <span className="text-zinc-300">{restaurant.rating?.toFixed(1)}</span>
                     <span className="mx-2 text-zinc-600">•</span>
-                    {restaurant.cuisine || 'Various'}
+                    {getFirstCuisine(restaurant.cuisine)}
                     <span className="mx-2 text-zinc-600">•</span>
                     {distance}
                 </p>

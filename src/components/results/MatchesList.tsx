@@ -38,7 +38,7 @@ export function MatchesList({ restaurants, onSelect }: MatchesListProps) {
                     className="text-zinc-400 font-semibold uppercase tracking-wider"
                     style={{ fontSize: 12 }}
                 >
-                    Other Matches
+                    Liked Restaurants
                 </h3>
                 <span
                     className="text-zinc-500 font-medium"

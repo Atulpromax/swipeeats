@@ -40,6 +40,13 @@ export function WinnerHero({ restaurant, userLat, userLon }: WinnerHeroProps) {
         return `₹${price}`;
     };
 
+    // Get first cuisine only
+    const getFirstCuisine = (cuisineStr: string | undefined) => {
+        if (!cuisineStr) return 'Restaurant';
+        const first = cuisineStr.split(',')[0].trim();
+        return first || 'Restaurant';
+    };
+
     return (
         <motion.div
             className="relative overflow-hidden"
@@ -125,7 +132,7 @@ export function WinnerHero({ restaurant, userLat, userLon }: WinnerHeroProps) {
                         <span className="text-white/40 text-sm">•</span>
 
                         {/* Cuisine */}
-                        <span className="text-sm">{restaurant.cuisine || 'Multi-cuisine'}</span>
+                        <span className="text-sm">{getFirstCuisine(restaurant.cuisine)}</span>
 
                         <span className="text-white/40 text-sm">•</span>
 

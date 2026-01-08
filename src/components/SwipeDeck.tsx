@@ -86,6 +86,13 @@ export const SwipeDeck = memo(function SwipeDeck({
         });
     }, [currentIndex, restaurants]);
 
+    // FIX: Reset position when currentIndex changes (especially on retry when it goes back to 0)
+    useEffect(() => {
+        x.set(0);
+        setIsAnimatingOut(false);
+        setIsDragging(false);
+    }, [currentIndex, x]);
+
     const performSwipe = useCallback((direction: 'left' | 'right') => {
         if (isAnimatingOut) return;
         setIsAnimatingOut(true);
